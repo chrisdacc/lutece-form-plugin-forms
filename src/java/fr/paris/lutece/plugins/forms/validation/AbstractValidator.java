@@ -66,7 +66,7 @@ public abstract class AbstractValidator implements IValidator
         _listAvailableEntryType = listAvailableEntryType;
     }
 
-    @Override
+   /* @Override
     public boolean validate( List<FormQuestionResponse> formQuestionResponse, Control control )
     {
 
@@ -84,14 +84,36 @@ public abstract class AbstractValidator implements IValidator
         	{
         		if ( questionResponse.getQuestion( ).getId( ) == control.getIdControlTarget( ) && !validate( questionResponse, control ) )
                 {
+        		/*	System.out.println("The question response being checked "+ questionResponse.getQuestion( ) + ", id : "+ questionResponse.getQuestion( ).getId( ));
+        			System.out.println("Control "+ control+ " its groupid : " + control.getIdControlGroup() + " , "
+        					+ " validatorname " + control.getValidatorName() + " , value " + control.getValue());
 
-                    return false;
+    		return false;
                 }
         	}
         }
 
         return true;
+    } */
+
+    @Override
+    public boolean validate(List<FormQuestionResponse> formQuestionResponse, Control control) {
+        for (FormQuestionResponse questionResponse : formQuestionResponse) {
+            if (ControlType.TRANSITION.getLabel().equals(control.getControlType())) {
+                if (!validate(questionResponse, control)) {
+                    return false;
+                }
+            } else {
+                if (questionResponse.getQuestion().getId() == control.getIdControlTarget()) {
+                    if (!validate(questionResponse, control)) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
     }
+
 
     @Override
     public String getValidatorBeanName( )

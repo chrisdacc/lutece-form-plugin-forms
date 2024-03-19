@@ -41,10 +41,13 @@ import javax.servlet.http.HttpServletRequest;
 import org.apache.commons.lang3.StringUtils;
 
 import fr.paris.lutece.plugins.forms.business.Control;
+import fr.paris.lutece.plugins.forms.business.ControlGroup;
+import fr.paris.lutece.plugins.forms.business.ControlGroupHome;
 import fr.paris.lutece.plugins.forms.business.ControlHome;
 import fr.paris.lutece.plugins.forms.business.ControlType;
 import fr.paris.lutece.plugins.forms.business.FormQuestionResponse;
 import fr.paris.lutece.plugins.forms.business.FormQuestionResponseHome;
+import fr.paris.lutece.plugins.forms.business.LogicalOperator;
 import fr.paris.lutece.plugins.forms.business.Question;
 import fr.paris.lutece.plugins.forms.service.EntryServiceManager;
 import fr.paris.lutece.plugins.forms.service.entrytype.IResponseComparator;
@@ -108,37 +111,55 @@ public class EntryTypeDefaultDataService implements IEntryDataService
      * {@inheritDoc}
      */
     @Override
-    public FormQuestionResponse createResponseFromRequest( Question question, HttpServletRequest request, boolean bValidateQuestion )
-    {
-        FormQuestionResponse formQuestionResponse = createResponseFor( question );
+    public FormQuestionResponse createResponseFromRequest(Question question, HttpServletRequest request, boolean bValidateQuestion) {
+        FormQuestionResponse formQuestionResponse = createResponseFor(question);
 
-        GenericAttributeError error = EntryTypeServiceManager.getEntryTypeService( question.getEntry( ) ).getResponseData( question.getEntry( ), request,
-                formQuestionResponse.getEntryResponse( ), request.getLocale( ) );
+        // Retrieve response data and potential error from the request
+        GenericAttributeError error = EntryTypeServiceManager.getEntryTypeService(question.getEntry()).getResponseData(
+                question.getEntry(), request, formQuestionResponse.getEntryResponse(), request.getLocale());
 
-        if ( bValidateQuestion )
-        {
-            formQuestionResponse.setError( error );
-            if (error == null)
-            {
-	            List<Control> listControl = ControlHome.getControlByQuestionAndType( question.getId( ), ControlType.VALIDATION.getLabel( ) );
-	
-	            for ( Control control : listControl )
-	            {
-	                IValidator validator = EntryServiceManager.getInstance( ).getValidator( control.getValidatorName( ) );
-	                if ( !validator.validate( formQuestionResponse, control ) )
-	                {
-	                    error = new GenericAttributeError( );
-	                    error.setIsDisplayableError( true );
-	                    error.setErrorMessage( control.getErrorMessage( ) );
-	                    formQuestionResponse.setError( error );
-	                    break;
-	                }
-	            }
+        if (bValidateQuestion) {
+            // Set error obtained during response data retrieval
+            formQuestionResponse.setError(error);
+
+            // Validate the response if necessary
+            if (error == null) {
+                List<Control> listControl = ControlHome.getControlByQuestionAndType(question.getId(), ControlType.VALIDATION.getLabel());
+
+                boolean isValid = true;
+                if(!listControl.isEmpty()) {
+                	ControlGroup controlGroup = ControlGroupHome.findByPrimaryKey(listControl.get(0).getIdControlGroup()).orElse(null);
+		        	if(controlGroup != null && LogicalOperator.OR.getLabel().equals(controlGroup.getLogicalOperator().getLabel())) {
+		        		isValid = false;
+		        		for(Control control : listControl) {
+			                IValidator validator = EntryServiceManager.getInstance( ).getValidator( control.getValidatorName( ) );
+			                isValid = isValid || validator.validate( formQuestionResponse, control );
+		        		}
+		        		if(!isValid) {
+		        			error = new GenericAttributeError();
+		                    error.setIsDisplayableError(true);
+		                    error.setErrorMessage(listControl.get(0).getErrorMessage());
+		                    formQuestionResponse.setError(error);
+		        		}
+		        	}
+		        	else {
+		        		isValid = true;
+		        		for(Control control : listControl) {
+			                IValidator validator = EntryServiceManager.getInstance( ).getValidator( control.getValidatorName( ) );
+			                isValid = isValid && validator.validate( formQuestionResponse, control );
+			                if(!isValid) {
+			                	error = new GenericAttributeError();
+			                    error.setIsDisplayableError(true);
+			                    error.setErrorMessage(control.getErrorMessage());
+			                    formQuestionResponse.setError(error);
+			                    break;
+			                }
+		        		}
+		        	}
+                }
             }
-        }
-        else
-        {
-            formQuestionResponse.setError( null );
+        } else {
+            formQuestionResponse.setError(null);
         }
 
         return formQuestionResponse;

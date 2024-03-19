@@ -19,6 +19,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 
 import fr.paris.lutece.plugins.forms.business.Control;
+import fr.paris.lutece.plugins.forms.business.ControlGroup;
+import fr.paris.lutece.plugins.forms.business.ControlGroupHome;
 import fr.paris.lutece.plugins.forms.business.ControlHome;
 import fr.paris.lutece.plugins.forms.business.ControlType;
 import fr.paris.lutece.plugins.forms.business.Form;
@@ -26,6 +28,7 @@ import fr.paris.lutece.plugins.forms.business.FormHome;
 import fr.paris.lutece.plugins.forms.business.FormQuestionResponse;
 import fr.paris.lutece.plugins.forms.business.FormResponse;
 import fr.paris.lutece.plugins.forms.business.FormResponseHome;
+import fr.paris.lutece.plugins.forms.business.LogicalOperator;
 import fr.paris.lutece.plugins.forms.business.Question;
 import fr.paris.lutece.plugins.forms.business.QuestionHome;
 import fr.paris.lutece.plugins.forms.business.Step;
@@ -245,6 +248,7 @@ public class FormsResponseUtils
                         .collect( Collectors.toList( ) );
 
                 IValidator validator = EntryServiceManager.getInstance( ).getValidator( transitionControl.getValidatorName( ) );
+                System.out.println("FormResponseUtils WORKING HERE as getNextStep");
                 if ( validator != null && !validator.validate( listQuestionResponse, transitionControl ) )
                 {
                     controlsValidated = false;
@@ -346,23 +350,42 @@ public class FormsResponseUtils
         {
         	if ( bValidateQuestionStep )
         	{
+        		boolean isValid = true;
 	        	List<Control> listControl = ControlHome.getControlByQuestionAndType( formQuestionResponse.getQuestion( ).getId( ), ControlType.VALIDATION.getLabel( ) );
+	        	if(!listControl.isEmpty()) {
+	        		ControlGroup controlGroup = ControlGroupHome.findByPrimaryKey(listControl.get(0).getIdControlGroup()).orElse(null);
+		        	if(controlGroup != null && LogicalOperator.OR.getLabel().equals(controlGroup.getLogicalOperator().getLabel())) {
+		        		isValid = false;
+		        		for(Control control : listControl) {
+			                IValidator validator = EntryServiceManager.getInstance( ).getValidator( control.getValidatorName( ) );
+			                isValid = isValid || validator.validate( listResponsesTemp, control );
+		        		}
+		        		if(!listControl.isEmpty() && !isValid) {
+			        		GenericAttributeError error = new GenericAttributeError( );
+			        		
+		                    error.setIsDisplayableError( true );
+		                    error.setErrorMessage( listControl.get(0).getErrorMessage() );
+
+		                    formQuestionResponse.setError( error );
+
+			        	}
+		        	}
+		        	else {
+		        		isValid = true;
+		        		for(Control control : listControl) {
+			                IValidator validator = EntryServiceManager.getInstance( ).getValidator( control.getValidatorName( ) );
+			                isValid = isValid && validator.validate( listResponsesTemp, control );
+			                if(!isValid) {
+			                	GenericAttributeError error = new GenericAttributeError( );
+			                    error.setIsDisplayableError(true);
+			                    error.setErrorMessage(control.getErrorMessage());
+			                    formQuestionResponse.setError(error);
+			                    break;
+			                }
+		        		}
+		        	}
+	        	}
 	        	
-	        	for ( Control control : listControl )
-	            {
-	                IValidator validator = EntryServiceManager.getInstance( ).getValidator( control.getValidatorName( ) );
-	                if ( !validator.validate( listResponsesTemp, control ) )
-	                {
-	                	GenericAttributeError error = new GenericAttributeError( );
-	
-	                    error.setIsDisplayableError( true );
-	                    error.setErrorMessage( control.getErrorMessage( ) );
-	
-	                    formQuestionResponse.setError( error );
-	
-	                    break;
-	                }
-	            }
         	}
         	
         	if ( formQuestionResponse.hasError( ) )

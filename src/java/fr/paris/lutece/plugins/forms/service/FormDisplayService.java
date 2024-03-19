@@ -79,14 +79,21 @@ public class FormDisplayService extends AbstractFormDisplayService
                 FormQuestionResponseHome.removeByQuestion( formDisplayCompositeId );
 
                 List<Control> listControl = ControlHome.getControlByQuestionAndType( formDisplayCompositeId, ControlType.VALIDATION.getLabel( ) );
-
+                int nIdControlGroup = 0;
                 for ( Control control : listControl )
                 {
+                	if (nIdControlGroup == 0) {
+            			nIdControlGroup = control.getIdControlGroup();
+            		}
                     ControlHome.remove( control.getId( ) );
                 }
-
+                // Delete control group
+                ControlGroupHome.remove(nIdControlGroup);
+                
+                ControlHome.removeByControlTarget( formDisplayToDelete.getId( ), ControlType.VALIDATION );
+                
                 listControl = ControlHome.getControlByControlTargetAndType( formDisplayCompositeId, ControlType.CONDITIONAL );
-                int nIdControlGroup = 0;
+                nIdControlGroup = 0;
                 for ( Control control : listControl )
                 {
                 	if (nIdControlGroup == 0) {

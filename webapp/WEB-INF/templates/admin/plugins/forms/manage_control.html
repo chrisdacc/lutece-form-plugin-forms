@@ -32,6 +32,14 @@
             </#list>
             </tbody>
         </@table>
+        <@tform method='post' id='modifyLogicalOperator' action='jsp/admin/plugins/forms/ManageControls.jsp?view=manageControl'>
+			<@inputGroup>
+				<@select name='logical_operator' items=logicalOperators default_value='${logical_operator_label!}' />
+				<@inputGroupItem>
+					<@button type='submit' name='view_modifyLogicalOperator' value='validateLogicalOperator' hideTitle=['all'] buttonIcon='check'/>
+				</@inputGroupItem>
+			</@inputGroup>
+		</@tform>
     <#else>
         <@alert color='warning'>
             <@icon style='exclamation-triangle' /> #i18n{forms.manage_transitions.labelNoControl}
